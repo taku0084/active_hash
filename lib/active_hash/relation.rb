@@ -113,11 +113,7 @@ module ActiveHash
 
     def filter_all_records_by_query_hash
       self.records_dirty = false
-      return all_records if query_hash.blank?
-
-      all_records.select do |record|
-        match_options?(record, query_hash)
-      end
+      all_records
     end
 
     def match_options?(record, options)
