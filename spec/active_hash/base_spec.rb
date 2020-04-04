@@ -335,6 +335,10 @@ describe ActiveHash, "Base" do
       Country.where.not(language: 'Spanish').class.should == ActiveHash::Relation
     end
 
+    it 'returns a chainable Relation when id passed' do
+      Country.where.not(id: [1, 2]).class.should == ActiveHash::Relation
+    end
+
     it "returns all records when passed nil" do
       Country.where.not(nil).should == Country.all
     end
