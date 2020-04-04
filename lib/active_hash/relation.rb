@@ -15,20 +15,26 @@ module ActiveHash
       self
     end
 
-    def where(query_hash = :chain)
-      return ActiveHash::Base::WhereChain.new(self) if query_hash == :chain
+    def where(query_hash = {})
+      return self if query_hash.blank?
 
-      self.records_dirty = true unless query_hash.nil? || query_hash.keys.empty?
-      self.query_hash.merge!(query_hash || {})
-      self
+      filtered_records = all_records.select do |record|
+        match_options?(record, query_hash)
+      end
+      ActiveHash::Relation.new(klass, filtered_records)
     end
 
-    def all(options = {})
-      if options.has_key?(:conditions)
-        where(options[:conditions])
-      else
-        where({})
+    def not(query_hash)
+      return ActiveHash::Relation.new(klass, all_records) if query_hash.blank?
+
+      filtered_records = all_records.reject do |record|
+        match_options?(record, query_hash)
       end
+      ActiveHash::Relation.new(klass, filtered_records)
+    end
+
+    def all
+      where({})
     end
 
     def find_by(options)
@@ -39,12 +45,8 @@ module ActiveHash
       find_by(options) || (raise RecordNotFound.new("Couldn't find #{klass.name}"))
     end
 
-    def find(id = nil, *args, &block)
+    def find(id = nil, &block)
       case id
-        when :all
-          all
-        when :first
-          all(*args).first
         when Array
           id.map { |i| find(i) }
         when nil
@@ -58,8 +60,7 @@ module ActiveHash
     end
 
     def find_by_id(id)
-      index = klass.send(:record_index)[id.to_s] # TODO: Make index in Base publicly readable instead of using send?
-      index and records[index]
+      find_by(id: id)
     end
 
     def count
@@ -114,39 +115,33 @@ module ActiveHash
       self.records_dirty = false
       return all_records if query_hash.blank?
 
-      # use index if searching by id
-      if query_hash.key?(:id) || query_hash.key?("id")
-        ids = (query_hash.delete(:id) || query_hash.delete("id"))
-        ids = range_to_array(ids) if ids.is_a?(Range)
-        candidates = Array.wrap(ids).map { |id| klass.find_by_id(id) }.compact
-      end
-
-      return candidates if query_hash.blank?
-
-      (candidates || all_records || []).select do |record|
+      all_records.select do |record|
         match_options?(record, query_hash)
       end
     end
 
     def match_options?(record, options)
       options.all? do |col, match|
-        if match.kind_of?(Array)
-          match.any? { |v| normalize(v) == normalize(record[col]) }
+        attr = record[col]
+        if match.is_a?(Array)
+          match.any? { |val| normalize(col, attr) == normalize(col, val) }
+        elsif match.is_a?(Range)
+          match.include?(attr)
         else
-          normalize(record[col]) == normalize(match)
+          normalize(col, attr) == normalize(col, match)
         end
       end
     end
 
-    def normalize(v)
-      v.respond_to?(:to_sym) ? v.to_sym : v
-    end
-
-    def range_to_array(range)
-      return range.to_a unless range.end.nil?
-
-      e = records.last[:id]
-      (range.begin..e).to_a
+    def normalize(field_name, value)
+      case
+      when field_name == :id
+        value.to_i
+      when value.respond_to?(:to_sym)
+        value.to_sym
+      else
+        value
+      end
     end
 
     def check_if_method_has_arguments!(method_name, args)
