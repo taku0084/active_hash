@@ -16,48 +16,6 @@ module ActiveHash
 
     class_attribute :_data, :dirty, :default_attributes
 
-    class WhereChain
-      def initialize(scope)
-        @scope = scope
-        @records = @scope.all
-      end
-
-      def not(options)
-        return @scope if options.blank?
-
-        # use index if searching by id
-        if options.key?(:id) || options.key?("id")
-          ids = @scope.pluck(:id) - Array.wrap(options.delete(:id) || options.delete("id"))
-          candidates = ids.map { |id| @scope.find_by_id(id) }.compact
-        end
-        return candidates if options.blank?
-
-        filtered_records = (candidates || @records || []).reject do |record|
-          match_options?(record, options)
-        end
-
-        ActiveHash::Relation.new(@scope.klass, filtered_records, {})
-      end
-
-      def match_options?(record, options)
-        options.all? do |col, match|
-          if match.kind_of?(Array)
-            match.any? { |v| normalize(v) == normalize(record[col]) }
-          else
-            normalize(record[col]) == normalize(match)
-          end
-        end
-      end
-
-      private :match_options?
-
-      def normalize(v)
-        v.respond_to?(:to_sym) ? v.to_sym : v
-      end
-
-      private :normalize
-    end
-
     if Object.const_defined?(:ActiveModel)
       extend ActiveModel::Naming
       include ActiveModel::Conversion
@@ -184,8 +142,8 @@ module ActiveHash
         record
       end
 
-      def all(options = {})
-        ActiveHash::Relation.new(self, @records || [], options[:conditions] || {})
+      def all
+        ActiveHash::Relation.new(self, @records || [])
       end
 
       delegate :where, :find, :find_by, :find_by!, :find_by_id, :count, :pluck, :pick, :first, :last, :order, to: :all
@@ -399,6 +357,10 @@ module ActiveHash
         end
       end
 
+      def find_using_index(id)
+        index = record_index[id.to_s]
+        index && @records[index]
+      end
     end
 
     def initialize(attributes = {})
@@ -508,6 +470,5 @@ module ActiveHash
     def marked_for_destruction?
       false
     end
-
   end
 end
