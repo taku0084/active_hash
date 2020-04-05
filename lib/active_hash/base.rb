@@ -357,6 +357,10 @@ module ActiveHash
         end
       end
 
+      def find_using_index(id)
+        index = record_index[id.to_s]
+        index && @records[index]
+      end
     end
 
     def initialize(attributes = {})
@@ -466,6 +470,5 @@ module ActiveHash
     def marked_for_destruction?
       false
     end
-
   end
 end

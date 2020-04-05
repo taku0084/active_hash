@@ -60,7 +60,11 @@ module ActiveHash
     end
 
     def find_by_id(id)
-      find_by(id: id)
+      if scoped?
+        find_by(id: id)
+      else
+        klass.find_using_index(id)
+      end
     end
 
     def count
@@ -173,6 +177,10 @@ module ActiveHash
           end
         end
       end
+    end
+
+    def scoped?
+      klass.data && klass.data.size != all_records.size
     end
   end
 end
