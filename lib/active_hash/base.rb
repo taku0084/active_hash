@@ -143,7 +143,7 @@ module ActiveHash
       end
 
       def all
-        ActiveHash::Relation.new(self, @records || [], {})
+        ActiveHash::Relation.new(self, @records || [])
       end
 
       delegate :where, :find, :find_by, :find_by!, :find_by_id, :count, :pluck, :pick, :first, :last, :order, to: :all

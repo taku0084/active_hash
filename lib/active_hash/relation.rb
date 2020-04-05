@@ -7,34 +7,31 @@ module ActiveHash
     delegate :empty?, :length, :first, :second, :third, :last, to: :records
     delegate :sample, to: :records
 
-    def initialize(klass, all_records, query_hash = nil)
+    def initialize(klass, records)
       self.klass = klass
-      self.all_records = all_records
-      self.query_hash = query_hash
-      self.records_dirty = false
-      self
+      self.records = records
     end
 
     def where(query_hash = {})
       return self if query_hash.blank?
 
-      filtered_records = all_records.select do |record|
+      filtered_records = records.select do |record|
         match_options?(record, query_hash)
       end
       ActiveHash::Relation.new(klass, filtered_records)
     end
 
     def not(query_hash)
-      return ActiveHash::Relation.new(klass, all_records) if query_hash.blank?
+      return ActiveHash::Relation.new(klass, records) if query_hash.blank?
 
-      filtered_records = all_records.reject do |record|
+      filtered_records = records.reject do |record|
         match_options?(record, query_hash)
       end
       ActiveHash::Relation.new(klass, filtered_records)
     end
 
     def all
-      where({})
+      where
     end
 
     def find_by(options)
@@ -79,10 +76,6 @@ module ActiveHash
       pluck(*column_names).first
     end
 
-    def reload
-      @records = filter_all_records_by_query_hash
-    end
-
     def order(*options)
       check_if_method_has_arguments!(:order, options)
       relation = where({})
@@ -101,24 +94,11 @@ module ActiveHash
     end
 
 
-    attr_reader :query_hash, :klass, :all_records, :records_dirty
+    attr_reader :klass, :records
 
     private
 
-    attr_writer :query_hash, :klass, :all_records, :records_dirty
-
-    def records
-      if @records.nil? || records_dirty
-        reload
-      else
-        @records
-      end
-    end
-
-    def filter_all_records_by_query_hash
-      self.records_dirty = false
-      all_records
-    end
+    attr_writer  :klass, :records
 
     def match_options?(record, options)
       options.all? do |col, match|
@@ -180,7 +160,7 @@ module ActiveHash
     end
 
     def scoped?
-      klass.data && klass.data.size != all_records.size
+      klass.data && klass.data.size != records.size
     end
   end
 end
