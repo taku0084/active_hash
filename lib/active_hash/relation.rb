@@ -82,7 +82,7 @@ module ActiveHash
       return relation if options.blank?
 
       processed_args = preprocess_order_args(options)
-      candidates = relation.dup
+      candidates = relation.records.dup
 
       order_by_args!(candidates, processed_args)
 
