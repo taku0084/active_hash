@@ -196,13 +196,6 @@ describe ActiveHash, "Base" do
       records.first.name.should == "Canada"
       records.length.should == 1
     end
-
-    it "filters the records from a AR-like conditions hash" do
-      record = Country.all(:conditions => {:name => 'US'})
-      record.count.should == 1
-      record.first.id.should == 1
-      record.first.name.should == 'US'
-    end
   end
 
   describe ".where" do
@@ -221,7 +214,7 @@ describe ActiveHash, "Base" do
     end
 
     it "returns WhereChain class if no conditions are provided" do
-      Country.where.class.should == ActiveHash::Base::WhereChain
+      Country.where.class.should == ActiveHash::Relation
     end
 
     it "returns all records when passed nil" do
@@ -400,7 +393,7 @@ describe ActiveHash, "Base" do
     end
 
     it "filters records for multiple conditions" do
-      expect(Country.where.not(:id => 1, :name => 'Mexico')).to match_array([Country.find(2)])
+      expect(Country.where.not(:id => 1, :language => 'English').to_a).to match_array(Country.find([2, 3]))
     end
   end
 
@@ -597,33 +590,6 @@ describe ActiveHash, "Base" do
         proc do
           Country.find(0)
         end.should raise_error(ActiveHash::RecordNotFound, /Couldn't find Country with ID=0/)
-      end
-    end
-
-    context "with :all" do
-      it "returns all records" do
-        Country.find(:all).should == [Country.new(:id => 1), Country.new(:id => 2)]
-      end
-    end
-
-    context "with :first" do
-      it "returns the first record" do
-        Country.find(:first).should == Country.new(:id => 1)
-      end
-
-      it "returns the first record that matches the search criteria" do
-        Country.find(:first, :conditions => {:id => 2}).should == Country.new(:id => 2)
-      end
-
-      it "returns nil if none matches the search criteria" do
-        Country.find(:first, :conditions => {:id => 3}).should == nil
-      end
-    end
-
-    context "with 2 arguments" do
-      it "returns the record with the given id and ignores the conditions" do
-        Country.find(1, :conditions => "foo=bar").should == Country.new(:id => 1)
-        Country.find(:all, :conditions => "foo=bar").length.should == 2
       end
     end
 
